@@ -80,11 +80,10 @@ receive_i2c(int size)
     }
 }
 
-uint8_t tx_buf[10] = {0};
 void
 setup()
 {
-    // Serial.begin(9600);
+    Serial.begin(9600);
     Wire.begin(0x69);
     Wire.onReceive(receive_i2c);
     msg_handler.begin();

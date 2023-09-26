@@ -4,6 +4,13 @@
 
 constexpr int FRAME_RATE = 60;
 
+enum class target_t : unsigned char
+{
+    RELAY,
+    LED,
+    BOTH
+};
+
 enum class i2c_return_t : unsigned char
 {
     SUCCESS = 0,
@@ -18,6 +25,7 @@ enum class FD_CMD : unsigned char
 {
     SET_RELAY = 0x1,
     SET_LED =   0x2,
+    SET_BOTH =  0x3,
     FADE_LED =  0x4,
     SET_ALL =   0x8,
     RESET =     0x10, //probably unused
