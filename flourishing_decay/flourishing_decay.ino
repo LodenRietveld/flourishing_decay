@@ -7,14 +7,15 @@
 
 #include "flourishing.hpp"
 
+// CHANGE ME TO CHANGE MY I2C ADDRESS
+constexpr uint8_t FD_WORKER_I2C_ADDR = 0x41;
+
 constexpr uint8_t FDPCAOE = 0;
 constexpr uint8_t FDSCL = 1;
 constexpr uint8_t FDSDA = 2;
 
-constexpr uint8_t PCA_ADDR = 0x40;
-
 SoftWire w(FDSDA, FDSCL);
-PCA9685 leds(PCA_ADDR, w);
+PCA9685 leds(0x40, w);
 fd_message_handler msg_handler(leds);
 
 struct queue_item {
@@ -88,13 +89,27 @@ receive_i2c(int size)
 }
 
 void
+copy_rx_buf_to_msg_handler_queue()
+{
+    uint8_t round = 0;
+    while (rx_idx > 0) {
+        uint8_t buf[sizeof(fd_msg)];
+        for (int i = 0; i < sizeof(fd_msg); i++){
+            buf[i] = i2c_rx_buf[i + (round * sizeof(fd_msg))];
+        }
+        round++;
+        rx_idx -= sizeof(fd_msg);
+        msg_handler.add_message(buf);
+    }
+}
+
+void
 setup()
 {
     // Serial.begin(9600);
-    // Serial.println("Starting up wire");
+    // Serial.println("Starting up");
     Wire.setClock(400000);
-    Wire.begin(0x40);
-    // Serial.println("Adding onreceive");
+    Wire.begin(FD_WORKER_I2C_ADDR);
     Wire.onReceive(receive_i2c);
     msg_handler.begin();
 
@@ -105,20 +120,8 @@ void
 loop()
 {
     if (rx_idx > 0) {
-        digitalWrite(13, LOW);
-        uint8_t round = 0;
-        while (rx_idx > 0) {
-            uint8_t buf[sizeof(fd_msg)];
-            for (int i = 0; i < sizeof(fd_msg); i++){
-                buf[i] = i2c_rx_buf[i + (round * sizeof(fd_msg))];
-            }
-            round++;
-            rx_idx -= sizeof(fd_msg);
-            msg_handler.add_message(buf);
-        }
-
+        copy_rx_buf_to_msg_handler_queue();
         msg_handler.handle_queue();
-        digitalWrite(13, HIGH);
     }
 
     if (timer >= 15) {

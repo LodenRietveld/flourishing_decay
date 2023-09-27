@@ -78,12 +78,7 @@ setup()
     Serial.println();
 }
 
-elapsedMillis test_timer;
-int test_time = 30;
-int off_time = test_time/2;
 
-uint8_t rel_idx = 2;
-bool off = false;
 
 void
 loop()
@@ -91,7 +86,7 @@ loop()
     OSCMessage inc;
 
     int size = Udp.parsePacket();
-    char data_buf[100];
+    char data_buf[1000];
     uint8_t idx = 0;
 
     if (size > 0) {
@@ -100,7 +95,6 @@ loop()
             data_buf[idx] = Udp.read();
             inc.fill(data_buf[idx++]);
         }
-
 
         if (!inc.hasError()) {
             Serial.print("Message reads: ");
@@ -111,18 +105,6 @@ loop()
             Serial.print("Message error, raw data is ");
             Serial.println(String(data_buf));
         }
-    }
-    if (test_timer > off_time && !off) {
-        swarm.forward(rel_idx, 0, 0, target_t::BOTH);
-        off = true;
-    }
-    if (test_timer > test_time) {
-        Serial.println("Setting idx " + String(rel_idx));
-        swarm.forward(++rel_idx, 4095, 0, target_t::BOTH);
-        test_timer = 0;
-        if (rel_idx > 9)
-            rel_idx = 0;
-        off = false;
     }
 
     delay(1);

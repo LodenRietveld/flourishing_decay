@@ -65,3 +65,18 @@ fd_worker::send(fd_msg& msg)
     w.write(raw, sizeof(fd_msg));
     Serial.println("EndTransmission result is " + String(w.endTransmission(true)));
 }
+
+void
+fd_test_board_off(fd_swarm& swarm, fd_board& b)
+{
+    swarm.forward((b.board_idx * 10) + b.on_pin, 0, 0, target_t::BOTH);
+}
+
+void
+fd_test_board_on(fd_swarm& swarm, fd_board& b)
+{
+    swarm.forward(++b.on_pin + (b.board_idx * 10), 4095, 0, target_t::BOTH);
+    
+    if (b.on_pin > 9)
+        b.on_pin = 0;
+}

@@ -7,6 +7,13 @@
 #define NUM_WORKERS     10
 #define I2C_BASE_ADDR   0x40
 
+struct fd_board
+{
+    uint8_t board_idx;
+    uint8_t on_pin;
+};
+
+
 class fd_worker
 {
     public:
@@ -40,3 +47,10 @@ class fd_swarm
     TwoWire& w;
     fd_worker* workers[NUM_WORKERS];
 };
+
+
+void
+fd_test_board_off(fd_swarm& swarm, fd_board& b);
+
+void
+fd_test_board_on(fd_swarm& swarm, fd_board& b);
