@@ -45,5 +45,32 @@ struct fd_msg
     unsigned short value; // split this in 12 bits of value and 4 bits of time to change?
     unsigned short time;
 };
-#pragma pack(pop, 1)
+#pragma pack(pop)
+
+inline String
+to_string(FD_CMD cmd)
+{
+    switch(cmd) {
+        case FD_CMD::SET_RELAY:
+            return "SET_RELAY";
+        case FD_CMD::SET_LED:
+            return "SET_LED";
+        case FD_CMD::SET_BOTH:
+            return "SET_BOTH";
+        case FD_CMD::FADE_LED:
+            return "FADE_LED";
+        case FD_CMD::SET_ALL:
+            return "SET_ALL";
+        case FD_CMD::RESET:
+            return "RESET";
+        case FD_CMD::STOP:
+            return "STOP";
+    }
+}
+
+inline String
+to_string(fd_msg& msg)
+{
+    return "{" + to_string((FD_CMD) msg.header.cmd) + ", " + String(msg.header.idx) + " ::::: " + String(msg.value) + ", " + String(msg.time) + "}";
+}
 

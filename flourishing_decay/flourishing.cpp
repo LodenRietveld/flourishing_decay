@@ -6,6 +6,9 @@ static constexpr int fd_message_handler::msg_queue_size;
 fd_message_handler::fd_message_handler(PCA9685& pca)
     : pca(pca)
 {
+    for (int i = 0; i < msg_queue_size; i++){
+        msg_queue[i].free = true;
+    }
 }
 
 void
@@ -19,15 +22,32 @@ fd_message_handler::begin()
     }
 }
 
-void
+i2c_return_t
 fd_message_handler::add_message(fd_msg& msg)
 {
     for (int i = 0; i < fd_message_handler::msg_queue_size; i++){
         if (msg_queue[i].free) {
-            *msg_queue[i].msg = msg;
-            return;
+            msg_queue[i].msg = msg;
+            msg_queue[i].free = false;
+            return i2c_return_t::SUCCESS;
         }
     }
+
+    return i2c_return_t::WRITE_BUFFER_TOO_LONG;
+}
+
+i2c_return_t
+fd_message_handler::add_message(uint8_t* msg)
+{
+    for (int i = 0; i < fd_message_handler::msg_queue_size; i++){
+        if (msg_queue[i].free) {
+            msg_queue[i].msg = *((fd_msg*) msg);
+            msg_queue[i].free = false;
+            return i2c_return_t::SUCCESS;
+        }
+    }
+
+    return i2c_return_t::WRITE_BUFFER_TOO_LONG;
 }
 
 void
@@ -35,45 +55,61 @@ fd_message_handler::handle_queue()
 {
     for (int i = 0; i < fd_message_handler::msg_queue_size; i++){
         if (!msg_queue[i].free) {
-            handle_message(*msg_queue[i].msg);
+
+            handle_message(msg_queue[i].msg);
             msg_queue[i].free = true;
         }
     }
 }
 
 void
+fd_message_handler::set_led(fd_msg& msg)
+{
+    auto& led = led_fades[msg.header.idx];
+    int num_steps = msg.time / FRAME_RATE;
+    int value_change = msg.value - led.current_value;
+
+    led.pin = led_pin_from_msg_index(msg.header.idx);
+    led.done = false;
+
+    if (num_steps == 0) {
+        led.change = value_change;
+        led.steps_left = 1;
+    } else {
+        led.change = value_change / num_steps;
+        led.steps_left = num_steps;
+    }
+    // Serial.println("Changing led " + String(led.pin) + " in " + String(num_steps) + " steps with " + String(led.change) + " per step to " + String(msg.value));
+}
+
+void
+fd_message_handler::set_relay(fd_msg& msg)
+{
+    auto& rel = relay_states[msg.header.idx];
+
+    rel.pin = relay_pin_from_msg_index(msg.header.idx);
+    rel.new_state = msg.value > 0;
+    rel.done = false;
+}
+
+void
 fd_message_handler::handle_message(fd_msg& msg)
 {
     switch ((FD_CMD) msg.header.cmd) {
-        //fallthrough
+        case FD_CMD::SET_BOTH: {
+            set_led(msg);
+            set_relay(msg);
+            break;
+        }
+
         case FD_CMD::FADE_LED: 
         case FD_CMD::SET_LED: {
-            auto& led = led_fades[msg.header.idx];
-            int num_steps = msg.time / FRAME_RATE;
-            int value_change = msg.value - led.current_value;
-
-            led.pin = led_pin_from_msg_index(msg.header.idx);
-            led.done = false;
-
-            if (num_steps == 0) {
-                led.change = value_change;
-                led.steps_left = 1;
-            } else {
-                led.change = value_change / num_steps;
-                led.steps_left = num_steps;
-            }
+            set_led(msg);
             break;
         }
 
         case FD_CMD::SET_RELAY: {
-            auto& rel = relay_states[msg.header.idx];
-            auto num_frames_to_wait = msg.time / FRAME_RATE;
-
-            rel.pin = relay_pin_from_msg_index(msg.header.idx);
-            rel.frames_until_change = num_frames_to_wait;
-            rel.new_state = msg.value > 0;
-            rel.done = false;
-            break;
+            set_relay(msg);
         }
 
         default:
@@ -115,11 +151,9 @@ fd_message_handler::update()
 
         if (!relay_states[i].done) {
             auto& rel = relay_states[i];
-            if (rel.frames_until_change-- <= 0) {
-                digitalWrite(rel.pin, rel.new_state);
-                rel.state = rel.new_state;
-                rel.done = true;
-            }
+            digitalWrite(rel.pin, rel.new_state);
+            rel.state = rel.new_state;
+            rel.done = true;
         }
     }
 }

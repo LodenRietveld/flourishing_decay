@@ -27,6 +27,13 @@ struct msg_queue
     int received_msgs = 0;
     queue_item queue[10];
 
+    msg_queue()
+    {
+        for (int i = 0; i < 10; i++){
+            queue[i].free = true;
+        }
+    }
+
     void
     add_msg(uint8_t* raw)
     {
@@ -34,6 +41,8 @@ struct msg_queue
             if (queue[i].free) {
                 memcpy(&queue[i].item, raw, sizeof(fd_msg));
                 queue[i].free = false;
+                ++received_msgs;
+                return;
             }
         }
     }
@@ -63,28 +72,29 @@ struct msg_queue
 volatile msg_queue i2c_queue;
 elapsedMillis timer;
 
+volatile bool i2c_rx = false;
+
+volatile int available;
+volatile uint8_t i2c_rx_buf[200];
+volatile uint8_t rx_idx = 0;
+
 void
 receive_i2c(int size)
 {
-    uint8_t cnt = 0;
     uint8_t buf[sizeof(fd_msg)];
-    while (Wire.available() > 1) {
-        buf[cnt++] = Wire.read();
-
-        if (cnt == sizeof(fd_msg)) {
-            i2c_queue.add_msg(buf);
-            i2c_queue.received_msgs++;
-            memset(buf, 0, sizeof(fd_msg));
-            cnt = 0;
-        }
+    while (Wire.available()) {
+        i2c_rx_buf[rx_idx++] = Wire.read();
     }
 }
 
 void
 setup()
 {
-    Serial.begin(9600);
-    Wire.begin(0x69);
+    // Serial.begin(9600);
+    // Serial.println("Starting up wire");
+    Wire.setClock(400000);
+    Wire.begin(0x40);
+    // Serial.println("Adding onreceive");
     Wire.onReceive(receive_i2c);
     msg_handler.begin();
 
@@ -94,17 +104,26 @@ setup()
 void
 loop()
 {
-    if (i2c_queue.available()) {
-        for (int i = i2c_queue.received_msgs - 1; i >= 0; i--){
-            msg_handler.add_message(i2c_queue.get_msg(i));
-            i2c_queue.remove_msg(i);
+    if (rx_idx > 0) {
+        digitalWrite(13, LOW);
+        uint8_t round = 0;
+        while (rx_idx > 0) {
+            uint8_t buf[sizeof(fd_msg)];
+            for (int i = 0; i < sizeof(fd_msg); i++){
+                buf[i] = i2c_rx_buf[i + (round * sizeof(fd_msg))];
+            }
+            round++;
+            rx_idx -= sizeof(fd_msg);
+            msg_handler.add_message(buf);
         }
 
         msg_handler.handle_queue();
+        digitalWrite(13, HIGH);
     }
 
     if (timer >= 15) {
         msg_handler.update();
         timer = 0;
     }
+
 }

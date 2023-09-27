@@ -9,7 +9,6 @@ struct relay
     uint8_t pin;
     bool state;
     bool new_state;
-    int frames_until_change;
     bool done;
 };
 
@@ -25,7 +24,7 @@ struct fader
 struct message_queue_item
 {
     bool free;
-    fd_msg* msg;
+    fd_msg msg;
 };
 
 class fd_message_handler {
@@ -33,8 +32,11 @@ class fd_message_handler {
     fd_message_handler(PCA9685& pca);
     ~fd_message_handler(){};
 
-    void
+    i2c_return_t
     add_message(fd_msg& msg);
+
+    i2c_return_t
+    add_message(uint8_t* msg);
 
     void
     handle_queue();
@@ -62,4 +64,10 @@ class fd_message_handler {
 
     int
     relay_pin_from_msg_index(int idx);
+
+    void
+    set_led(fd_msg& msg);
+
+    void
+    set_relay(fd_msg& msg);
 };

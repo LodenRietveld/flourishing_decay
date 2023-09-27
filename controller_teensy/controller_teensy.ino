@@ -11,11 +11,13 @@
 
 #include "fd_swarm.hpp"
 
+constexpr int ETH_RST = 9;
+
 EthernetUDP Udp;
 // CHECK THIS
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 
-IPAddress ip(128, 32, 122, 252);
+IPAddress ip(169, 254, 145, 242);
 const unsigned int port = 4200;
 
 fd_swarm swarm(Wire);
@@ -46,7 +48,7 @@ forward_both(OSCMessage& msg)
 {
     auto idx = (uint8_t) msg.getInt(0);
     auto value = (uint16_t) msg.getInt(1);
-    auto time = (uint16_t) msg.getInt(2);
+    auto time = 0;
     swarm.forward(idx, value, time, target_t::BOTH);
 }
 
@@ -54,26 +56,73 @@ forward_both(OSCMessage& msg)
 void
 setup()
 {
+    Serial.begin(9600);
+    
+    pinMode(ETH_RST, OUTPUT);
+    digitalWrite(ETH_RST, LOW);
+    delay(5);
+    digitalWrite(ETH_RST, HIGH);
+    delay(20);
+
     Ethernet.begin(mac, ip);
+
+    if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+        Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+    } else {
+        Serial.println("Ethernet shield found.");
+    }
+
     Udp.begin(port);
+    Serial.print("Local ip address is ");
+    Ethernet.localIP().printTo(Serial);
+    Serial.println();
 }
+
+elapsedMillis test_timer;
+int test_time = 30;
+int off_time = test_time/2;
+
+uint8_t rel_idx = 2;
+bool off = false;
 
 void
 loop()
 {
-    OSCBundle inc;
+    OSCMessage inc;
+
     int size = Udp.parsePacket();
+    char data_buf[100];
+    uint8_t idx = 0;
 
     if (size > 0) {
+        Serial.println("Received udp packet!");
         while (size--) {
-            inc.fill(Udp.read());
+            data_buf[idx] = Udp.read();
+            inc.fill(data_buf[idx++]);
         }
 
+
         if (!inc.hasError()) {
-            inc.dispatch("/led", forward_led);
-            inc.dispatch("/relay", forward_relay);
-            inc.dispatch("/both", forward_both);
+            Serial.print("Message reads: ");
+            inc.send(Serial);
+            Serial.println();
+            inc.dispatch("/flower", forward_both);
+        } else {
+            Serial.print("Message error, raw data is ");
+            Serial.println(String(data_buf));
         }
+    }
+    if (test_timer > off_time && !off) {
+        swarm.forward(rel_idx, 0, 0, target_t::BOTH);
+        off = true;
+    }
+    if (test_timer > test_time) {
+        Serial.println("Setting idx " + String(rel_idx));
+        swarm.forward(++rel_idx, 4095, 0, target_t::BOTH);
+        test_timer = 0;
+        if (rel_idx > 9)
+            rel_idx = 0;
+        off = false;
     }
 
     delay(1);
