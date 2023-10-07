@@ -100,7 +100,8 @@ loop()
             Serial.print("Message reads: ");
             inc.send(Serial);
             Serial.println();
-            inc.dispatch("/flower", forward_both);
+            inc.dispatch("/flower", forward_relay);
+            inc.dispatch("/led", forward_led);
         } else {
             Serial.print("Message error, raw data is ");
             Serial.println(String(data_buf));
