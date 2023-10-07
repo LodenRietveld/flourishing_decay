@@ -1,10 +1,10 @@
 #include "flourishing.hpp"
 #include "common.hpp"
 
-static constexpr int fd_message_handler::msg_queue_size;
+constexpr int fd_message_handler::msg_queue_size;
 
-fd_message_handler::fd_message_handler(PCA9685& pca)
-    : pca(pca)
+fd_message_handler::fd_message_handler()
+    // : pca(pca)
 {
     for (int i = 0; i < msg_queue_size; i++){
         msg_queue[i].free = true;
@@ -14,7 +14,7 @@ fd_message_handler::fd_message_handler(PCA9685& pca)
 void
 fd_message_handler::begin()
 {
-    pca.begin();
+    // pca.begin();
     for (int i = 0; i < 10; i++){
         auto p = relay_pin_from_msg_index(i);
         pinMode(p, OUTPUT);
@@ -141,7 +141,7 @@ fd_message_handler::update()
                 fade.current_value = new_value;
             }
 
-            pca.setPin(pin, new_value);
+            // pca.setPin(pin, new_value);
 
             if (fade.steps_left-- <= 0) {
                 fade.change = 0;

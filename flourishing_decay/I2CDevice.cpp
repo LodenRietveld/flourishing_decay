@@ -11,7 +11,7 @@ softwire_strerror(uint8_t errno)
         case 2: 
         case 3: return "nack";
         case 4: return "timeout";
-        default: "Unknown error";
+        default: return "Unknown error";
     }
 }
 

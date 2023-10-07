@@ -14,7 +14,6 @@ softwire_strerror(uint8_t errno);
 class I2CDevice 
 {
     public:
-    I2CDevice(){};
     I2CDevice(uint8_t addr, SoftWire& wire);
 
     i2c_return_t

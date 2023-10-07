@@ -4,8 +4,9 @@
 
 #include "/Users/macbook/data/Projects/pepe/Flourishing Decay/code/flourishing_decay/common.hpp"
 
-#define NUM_WORKERS     10
-#define I2C_BASE_ADDR   0x40
+#define NUM_WORKERS         13
+#define RELAYS_PER_WORKER   8
+#define I2C_BASE_ADDR       0x40
 
 struct fd_board
 {

@@ -15,7 +15,7 @@ fd_swarm::fd_swarm(TwoWire& w)
 void
 fd_swarm::forward(uint8_t idx, uint16_t value, uint16_t time, target_t type)
 {
-    auto board = idx / NUM_WORKERS;
+    auto board = idx / RELAYS_PER_WORKER;
     fd_msg msg;
 
     Serial.println("Forwarding: " + String(idx) + ", " + String(value) + ", " + String(time));
@@ -34,7 +34,7 @@ fd_swarm::forward(uint8_t idx, uint16_t value, uint16_t time, target_t type)
         }
     }
 
-    msg.header.idx = idx % NUM_WORKERS;
+    msg.header.idx = idx % RELAYS_PER_WORKER;
     msg.value = value;
     msg.time = time;
 
@@ -69,13 +69,13 @@ fd_worker::send(fd_msg& msg)
 void
 fd_test_board_off(fd_swarm& swarm, fd_board& b)
 {
-    swarm.forward((b.board_idx * 10) + b.on_pin, 0, 0, target_t::BOTH);
+    swarm.forward((b.board_idx * NUM_WORKERS) + b.on_pin, 0, 0, target_t::BOTH);
 }
 
 void
 fd_test_board_on(fd_swarm& swarm, fd_board& b)
 {
-    swarm.forward(++b.on_pin + (b.board_idx * 10), 4095, 0, target_t::BOTH);
+    swarm.forward(++b.on_pin + (b.board_idx * NUM_WORKERS), 4095, 0, target_t::BOTH);
     
     if (b.on_pin > 9)
         b.on_pin = 0;

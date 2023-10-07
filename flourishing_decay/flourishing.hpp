@@ -29,7 +29,7 @@ struct message_queue_item
 
 class fd_message_handler {
     public:
-    fd_message_handler(PCA9685& pca);
+    fd_message_handler();
     ~fd_message_handler(){};
 
     i2c_return_t
@@ -48,7 +48,7 @@ class fd_message_handler {
     begin();
 
     private:
-    PCA9685& pca;
+    // PCA9685& pca;
     static constexpr int msg_queue_size = 10;
     message_queue_item msg_queue[msg_queue_size];
     fd_msg message_queue_mem[msg_queue_size];
