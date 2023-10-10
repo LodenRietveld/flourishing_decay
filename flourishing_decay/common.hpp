@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 constexpr int FRAME_RATE = 60;
+constexpr uint8_t NUM_FLOWERS = 10;
 
 enum class target_t : unsigned char
 {
@@ -74,3 +75,55 @@ to_string(fd_msg& msg)
     return "{" + to_string((FD_CMD) msg.header.cmd) + ", " + String(msg.header.idx) + " ::::: " + String(msg.value) + ", " + String(msg.time) + "}";
 }
 
+
+struct queue_item {
+    bool free;
+    fd_msg item;
+};
+
+struct msg_queue 
+{
+    int received_msgs = 0;
+    queue_item queue[10];
+
+    msg_queue()
+    {
+        for (int i = 0; i < 10; i++){
+            queue[i].free = true;
+        }
+    }
+
+    void
+    add_msg(uint8_t* raw)
+    {
+        for (int i = 0; i < 10; i++){
+            if (queue[i].free) {
+                memcpy(&queue[i].item, raw, sizeof(fd_msg));
+                queue[i].free = false;
+                ++received_msgs;
+                return;
+            }
+        }
+    }
+
+    fd_msg&
+    get_msg(int idx)
+    {
+        return queue[idx].item;
+    }
+
+    void
+    remove_msg(int idx)
+    {
+        if (received_msgs > 0) {
+            --received_msgs;
+            queue[received_msgs].free = true;
+        }
+    }
+
+    int
+    available()
+    {
+        return received_msgs;
+    }
+};

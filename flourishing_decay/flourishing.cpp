@@ -15,7 +15,7 @@ void
 fd_message_handler::begin()
 {
     pca.begin();
-    for (int i = 0; i < 10; i++){
+    for (int i = 0; i < NUM_FLOWERS; i++){
         auto p = relay_pin_from_msg_index(i);
         pinMode(p, OUTPUT);
         digitalWrite(p, LOW);
@@ -121,7 +121,7 @@ fd_message_handler::handle_message(fd_msg& msg)
 void
 fd_message_handler::update()
 {
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < NUM_FLOWERS; i++) {
         if (!led_fades[i].done) {
             auto& fade = led_fades[i];
             auto pin = fade.pin;
@@ -169,3 +169,42 @@ int fd_message_handler::relay_pin_from_msg_index(int idx)
     return idx + 3;
 }
 
+bool
+has_idx(uint8_t* arr, uint8_t idx)
+{
+    for (int i = 0; i < NUM_FLOWERS; i++){
+        if (arr[i] == idx) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+fd_message_handler::startup_routine()
+{
+    uint8_t idx[NUM_FLOWERS] = {0};
+    uint8_t idcs[NUM_FLOWERS];
+    for (int i = 0; i < NUM_FLOWERS; i++) {
+        idcs[i] = i;
+    }
+
+    for (int i = 0; i < NUM_FLOWERS; i++) {
+        uint8_t new_idx;
+        do {
+            new_idx = idcs[rand() % NUM_FLOWERS];
+            idx[i] = new_idx;
+        }
+        while (has_idx(idx, new_idx));
+    }
+
+    for (int i = 0; i < NUM_FLOWERS; i++){
+        fd_msg msg;
+        msg.header.cmd = FD_CMD::SET_BOTH;
+        msg.header.idx = idx[i];
+        msg.time = 500*i;
+        msg.value = 4095;
+
+        this->handle_message(msg);
+    }
+}

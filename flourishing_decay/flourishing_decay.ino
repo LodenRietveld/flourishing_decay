@@ -10,65 +10,12 @@
 // CHANGE ME TO CHANGE MY I2C ADDRESS
 constexpr uint8_t FD_WORKER_I2C_ADDR = 0x41;
 
-constexpr uint8_t FDPCAOE = 0;
-constexpr uint8_t FDSCL = 1;
-constexpr uint8_t FDSDA = 2;
+constexpr uint8_t FDSCL = A2;
+constexpr uint8_t FDSDA = A3;
 
 SoftWire w(FDSDA, FDSCL);
 PCA9685 leds(0x40, w);
 fd_message_handler msg_handler(leds);
-
-struct queue_item {
-    bool free;
-    fd_msg item;
-};
-
-struct msg_queue 
-{
-    int received_msgs = 0;
-    queue_item queue[10];
-
-    msg_queue()
-    {
-        for (int i = 0; i < 10; i++){
-            queue[i].free = true;
-        }
-    }
-
-    void
-    add_msg(uint8_t* raw)
-    {
-        for (int i = 0; i < 10; i++){
-            if (queue[i].free) {
-                memcpy(&queue[i].item, raw, sizeof(fd_msg));
-                queue[i].free = false;
-                ++received_msgs;
-                return;
-            }
-        }
-    }
-
-    fd_msg&
-    get_msg(int idx)
-    {
-        return queue[idx].item;
-    }
-
-    void
-    remove_msg(int idx)
-    {
-        if (received_msgs > 0) {
-            --received_msgs;
-            queue[received_msgs].free = true;
-        }
-    }
-
-    int
-    available()
-    {
-        return received_msgs;
-    }
-};
 
 volatile msg_queue i2c_queue;
 elapsedMillis timer;
@@ -106,14 +53,15 @@ copy_rx_buf_to_msg_handler_queue()
 void
 setup()
 {
-    // Serial.begin(9600);
-    // Serial.println("Starting up");
+    Serial.begin(9600);
+    Serial.println("Starting up");
+
     Wire.setClock(400000);
     Wire.begin(FD_WORKER_I2C_ADDR);
     Wire.onReceive(receive_i2c);
+    
+    Serial.println("Begin msg handler");
     msg_handler.begin();
-
-    pinMode(FDPCAOE, OUTPUT);
 }
 
 void

@@ -47,14 +47,17 @@ class fd_message_handler {
     void
     begin();
 
+    void
+    startup_routine();
+
     private:
     PCA9685& pca;
     static constexpr int msg_queue_size = 10;
     message_queue_item msg_queue[msg_queue_size];
     fd_msg message_queue_mem[msg_queue_size];
 
-    fader led_fades[10];
-    relay relay_states[10];
+    fader led_fades[NUM_FLOWERS];
+    relay relay_states[NUM_FLOWERS];
 
     void
     handle_message(fd_msg& msg);

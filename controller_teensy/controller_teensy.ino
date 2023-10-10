@@ -48,7 +48,7 @@ forward_both(OSCMessage& msg)
 {
     auto idx = (uint8_t) msg.getInt(0);
     auto value = (uint16_t) msg.getInt(1);
-    auto time = 0;
+    auto time = 2000;
     swarm.forward(idx, value, time, target_t::BOTH);
 }
 
@@ -100,8 +100,10 @@ loop()
             Serial.print("Message reads: ");
             inc.send(Serial);
             Serial.println();
-            inc.dispatch("/flower", forward_relay);
-            inc.dispatch("/led", forward_led);
+            inc.dispatch("/flower", [](OSCMessage& msg) -> void{
+                swarm.forward((uint8_t) msg.getInt(0), (uint16_t) msg.getInt(1), 2000, target_t::BOTH);
+            });
+            // inc.dispatch("/led", forward_led);
         } else {
             Serial.print("Message error, raw data is ");
             Serial.println(String(data_buf));
