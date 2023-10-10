@@ -181,6 +181,7 @@ has_idx(uint8_t* arr, uint8_t idx)
     return false;
 }
 
+void
 fd_message_handler::startup_routine()
 {
     uint8_t idx[NUM_FLOWERS] = {0};
@@ -200,7 +201,7 @@ fd_message_handler::startup_routine()
 
     for (int i = 0; i < NUM_FLOWERS; i++){
         fd_msg msg;
-        msg.header.cmd = FD_CMD::SET_BOTH;
+        msg.header.cmd = (uint8_t)FD_CMD::SET_BOTH;
         msg.header.idx = idx[i];
         msg.time = 500*i;
         msg.value = 4095;
