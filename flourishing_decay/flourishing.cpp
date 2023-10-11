@@ -54,8 +54,8 @@ void
 fd_message_handler::handle_queue()
 {
     for (int i = 0; i < fd_message_handler::msg_queue_size; i++){
+        // Serial.println(i);
         if (!msg_queue[i].free) {
-
             handle_message(msg_queue[i].msg);
             msg_queue[i].free = true;
         }
@@ -97,7 +97,7 @@ fd_message_handler::handle_message(fd_msg& msg)
 {
     switch ((FD_CMD) msg.header.cmd) {
         case FD_CMD::SET_BOTH: {
-            set_led(msg);
+            // set_led(msg);
             set_relay(msg);
             break;
         }
@@ -141,7 +141,7 @@ fd_message_handler::update()
                 fade.current_value = new_value;
             }
 
-            pca.setPin(pin, new_value);
+            // pca.setPin(pin, new_value);
 
             if (fade.steps_left-- <= 0) {
                 fade.change = 0;

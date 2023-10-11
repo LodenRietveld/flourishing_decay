@@ -3,7 +3,7 @@
 fd_swarm::fd_swarm(TwoWire& w)
     : w(w)
 {
-    w.setClock(400000);
+    w.setClock(100000);
     w.begin();
     for (int i = 0; i < NUM_WORKERS; i++)
     {
@@ -18,7 +18,7 @@ fd_swarm::forward(uint8_t idx, uint16_t value, uint16_t time, target_t type)
     auto board = idx / NUM_WORKERS;
     fd_msg msg;
 
-    Serial.println("Forwarding: " + String(idx) + ", " + String(value) + ", " + String(time));
+    // Serial.println("Forwarding: " + String(idx) + ", " + String(value) + ", " + String(time));
 
     switch (type) {
         case target_t::RELAY: {
@@ -58,12 +58,16 @@ fd_worker::setup(int _board_num, int _i2c_addr)
 void
 fd_worker::send(fd_msg& msg)
 {
-    Serial.println("Sending over i2c");
+    // Serial.println("Sending over i2c");
     last_msg = msg;
     uint8_t* raw = reinterpret_cast<uint8_t*>(&msg);
     w.beginTransmission(i2c_addr);
     w.write(raw, sizeof(fd_msg));
-    Serial.println("EndTransmission result is " + String(w.endTransmission(true)));
+    int ret = w.endTransmission(true);
+    if (ret != 0) {
+        Serial.println("transmission failed with code " + String(ret));
+    }
+    // Serial.println("EndTransmission result is " + String(w.endTransmission(true)));
 }
 
 void

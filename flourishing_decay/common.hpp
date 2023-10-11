@@ -4,6 +4,7 @@
 
 constexpr int FRAME_RATE = 60;
 constexpr uint8_t NUM_FLOWERS = 10;
+constexpr uint8_t TOTAL_FLOWERS = NUM_FLOWERS * 10;
 
 enum class target_t : unsigned char
 {

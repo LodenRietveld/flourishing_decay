@@ -8,7 +8,7 @@
 #include "flourishing.hpp"
 
 // CHANGE ME TO CHANGE MY I2C ADDRESS
-constexpr uint8_t FD_WORKER_I2C_ADDR = 0x41;
+constexpr uint8_t FD_WORKER_I2C_ADDR = 0x40;
 
 constexpr uint8_t FDSCL = A2;
 constexpr uint8_t FDSDA = A3;
@@ -39,7 +39,7 @@ void
 copy_rx_buf_to_msg_handler_queue()
 {
     uint8_t round = 0;
-    while (rx_idx > 0) {
+    while (rx_idx) {
         uint8_t buf[sizeof(fd_msg)];
         for (int i = 0; i < sizeof(fd_msg); i++){
             buf[i] = i2c_rx_buf[i + (round * sizeof(fd_msg))];
@@ -56,7 +56,7 @@ setup()
     Serial.begin(9600);
     Serial.println("Starting up");
 
-    Wire.setClock(400000);
+    Wire.setClock(100000);
     Wire.begin(FD_WORKER_I2C_ADDR);
     Wire.onReceive(receive_i2c);
     
