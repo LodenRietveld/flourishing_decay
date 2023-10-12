@@ -15,6 +15,9 @@ fd_swarm::fd_swarm(TwoWire& w)
 void
 fd_swarm::forward(uint8_t idx, uint16_t value, uint16_t time, target_t type)
 {
+    if (!(idx >= 0 && idx < TOTAL_FLOWERS))
+        return;
+
     auto board = idx / NUM_WORKERS;
     fd_msg msg;
 
@@ -39,7 +42,17 @@ fd_swarm::forward(uint8_t idx, uint16_t value, uint16_t time, target_t type)
     msg.time = time;
 
     auto worker = workers[board];
-    worker->send(msg);
+    if (worker->send(msg)) {
+        i2c_bus_reset_count = 0;
+    } else {
+        i2c_bus_reset_count++;
+    }
+}
+
+bool
+fd_swarm::do_hard_reboot()
+{
+    return i2c_bus_reset_count > 5;
 }
 
 fd_worker::fd_worker(TwoWire& w)
@@ -56,6 +69,33 @@ fd_worker::setup(int _board_num, int _i2c_addr)
 }
 
 void
+cycle_clock(int cnt)
+{
+    for (int i = 0; i < cnt; i++){
+        digitalWrite(19, LOW);
+        delayMicroseconds(5);
+        digitalWrite(19, HIGH);
+        delayMicroseconds(5);
+    }
+}
+
+bool
+reset_bus()
+{
+    pinMode(18, INPUT);
+    digitalWrite(19, HIGH);
+    pinMode(19, OUTPUT);
+
+    for (int i = 0; digitalRead(18) == 0 && i < 9; i++){
+        cycle_clock(1);
+    }
+
+    Wire.end();
+    Wire.setClock(100000);
+    Wire.begin();
+}
+
+bool
 fd_worker::send(fd_msg& msg)
 {
     // Serial.println("Sending over i2c");
@@ -65,9 +105,11 @@ fd_worker::send(fd_msg& msg)
     w.write(raw, sizeof(fd_msg));
     int ret = w.endTransmission(true);
     if (ret != 0) {
-        Serial.println("transmission failed with code " + String(ret));
+        Serial.println("transmission failed with code " + String(ret) + ", address was " + String(msg.header.idx));
+        reset_bus();
+        return false;
     }
-    // Serial.println("EndTransmission result is " + String(w.endTransmission(true)));
+    return true;
 }
 
 void

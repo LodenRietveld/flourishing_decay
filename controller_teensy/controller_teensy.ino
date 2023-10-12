@@ -12,6 +12,7 @@
 #include "fd_swarm.hpp"
 
 constexpr int ETH_RST = 9;
+constexpr int QUEUE_SIZE = TOTAL_FLOWERS * 4;
 
 EthernetUDP Udp;
 // CHECK THIS
@@ -21,9 +22,69 @@ IPAddress ip(169, 254, 145, 242);
 const unsigned int port = 4200;
 
 fd_swarm swarm(Wire);
+uint8_t queue_count = 0;
+
+uint16_t msg_idx = 0;
+uint16_t handle_idx = 0;
+uint8_t changed_indices[QUEUE_SIZE] = {0};
+elapsedMicros queue_time;
+
+enum class fd_state : uint8_t
+{
+    FLOWER,
+    RESET
+};
+
+fd_state state = fd_state::RESET;
+int fade_time = 4000;
+float delay_step = fade_time / float(TOTAL_FLOWERS * 4);
+uint8_t reset_idx = 0;
+uint8_t reset_to_value = 1;
+
+elapsedMillis queue_monitor_timer;
+elapsedMillis reset_timer;
 
 
 float delay_time_fact[TOTAL_FLOWERS] = {0};
+
+void
+queue_change(uint8_t idx, uint8_t value)
+{
+    //drop message
+    if (queue_count >= QUEUE_SIZE)
+        return;
+
+    //circular buffer
+    if (msg_idx >= QUEUE_SIZE)
+        msg_idx = 0;
+
+    uint8_t v_queue = (value & 0x1) << 7;
+    v_queue |= idx & 0x7f;
+    changed_indices[msg_idx++] = v_queue;
+    queue_count++;
+    // Serial.println("Message index: " + String(msg_idx));
+}
+
+void
+handle_queue_item()
+{
+    if (handle_idx >= QUEUE_SIZE)
+        handle_idx = 0;
+    
+    if (queue_count <= 0)
+        return;
+
+    uint8_t v = changed_indices[handle_idx++];
+    swarm.forward(v & 0x7f, (v >> 7) * 4095, 2000, target_t::BOTH);
+    queue_count--;
+}
+
+void
+do_reset()
+{
+    SCB_AIRCR = 0x05FA0004;
+    asm volatile("dsb");
+}
 
 void
 calc_delay_time_fact()
@@ -40,9 +101,6 @@ setup()
 
     if (CrashReport) {
         Serial.print(CrashReport);
-        Serial.println(" ");
-        // Serial.print("NVRAM Marker Value = ");
-        // Serial.println( NVRAM_UINT32[0] );
     }
     
     pinMode(ETH_RST, OUTPUT);
@@ -66,55 +124,6 @@ setup()
 
     calc_delay_time_fact();
 }
-
-uint8_t msg_idx = 0;
-uint8_t changed_indices[TOTAL_FLOWERS] = {0};
-elapsedMillis queue_time;
-
-void
-queue_change(uint8_t idx, uint8_t value)
-{
-    uint8_t v_queue = (value & 0x1) << 7;
-    v_queue |= idx & 0x7f;
-    changed_indices[msg_idx++] = v_queue;
-    // Serial.println("Message index: " + String(msg_idx));
-}
-
-void
-handle_queue()
-{
-    switch(msg_idx) {
-        case 0: {
-            return;
-        }
-        default: {
-            for (int i = 0; i < msg_idx; i++) {
-                uint8_t& v = changed_indices[i];
-                // Serial.println("Handle " + String(msg_idx) + " msg: " + String((v & 0x7f)) + ", " + String(((v >> 7) * 4095)));
-                swarm.forward(v & 0x7f, (v >> 7) * 4095, 2000, target_t::BOTH);
-                delayMicroseconds(100);
-            }
-
-            msg_idx = 0;
-            break;
-        }
-
-    }
-    
-    
-}
-
-enum class fd_state : uint8_t
-{
-    FLOWER,
-    RESET
-};
-
-fd_state state = fd_state::FLOWER;
-int fade_time = 0;
-float delay_step = 0;
-uint8_t reset_idx = 0;
-uint8_t reset_to_value = 0;
 
 
 void
@@ -142,7 +151,7 @@ loop()
                 fade_time = inc.getInt(0);
                 reset_to_value = inc.getInt(1);
                 state = fd_state::RESET;
-                delay_step = fade_time / float(TOTAL_FLOWERS * 2);
+                delay_step = fade_time / float(TOTAL_FLOWERS * 4);
             } else {
                 // Serial.println("Message address was " + String(inc.getAddress()));
             }
@@ -152,17 +161,25 @@ loop()
         }
     }
 
+    if (queue_monitor_timer > 500) {
+        Serial.println("queue size: " + String(queue_count) + ", msg_idx: " + String(msg_idx) + ", handle_idx: " + String(handle_idx));
+        queue_monitor_timer = 0;
+    }
+
     switch(state) {
         case fd_state::FLOWER: {
-            if (queue_time > 2) { 
-                handle_queue();
+            if (queue_time > 20) { 
+                handle_queue_item();
                 queue_time = 0;
             }
             break;
         }
 
         case fd_state::RESET: {
-            if (reset_idx > 99) {
+            if (swarm.do_hard_reboot())
+                do_reset();
+
+            if (reset_idx >= TOTAL_FLOWERS) {
                 state = fd_state::FLOWER;
                 reset_idx = 0;
                 // Serial.println("Set state to flower");
@@ -175,6 +192,4 @@ loop()
             break;
         }
     }
-
-    // delay(1);
 }

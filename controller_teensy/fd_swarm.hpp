@@ -23,7 +23,7 @@ class fd_worker
     void
     setup(int board_num, int i2c_addr);
 
-    void
+    bool
     send(fd_msg& msg);
 
     private:
@@ -43,9 +43,13 @@ class fd_swarm
     void
     forward(uint8_t idx, uint16_t value, uint16_t time, target_t target);
 
+    bool
+    do_hard_reboot();
+
     private:
     TwoWire& w;
     fd_worker* workers[NUM_WORKERS];
+    int i2c_bus_reset_count = 0;
 };
 
 

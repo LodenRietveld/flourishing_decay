@@ -3,8 +3,9 @@
 #include <Arduino.h>
 
 constexpr int FRAME_RATE = 60;
-constexpr uint8_t NUM_FLOWERS = 10;
-constexpr uint8_t TOTAL_FLOWERS = NUM_FLOWERS * 10;
+constexpr int NUM_FLOWERS = 10;
+constexpr int FLOWERS_PER_TEENSY = 10;
+constexpr int TOTAL_FLOWERS = NUM_FLOWERS * FLOWERS_PER_TEENSY;
 
 enum class target_t : unsigned char
 {
